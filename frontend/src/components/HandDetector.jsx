@@ -1,69 +1,50 @@
 import React, { useEffect, useRef } from "react";
-import { Hands } from "@mediapipe/hands";
-import { Camera } from "@mediapipe/camera_utils";
+import { initializeHandDetection, detectHands, getNearestHand, isPinching } from "../utils/handDetection";
 
-export default function HandDetector() {
+export default function HandDetector({ onPointer }) {
   const videoRef = useRef(null);
-  const canvasRef = useRef(null);
+  let intervalId = useRef(null);
 
   useEffect(() => {
-    if (!videoRef.current) return;
+    const setup = async () => {
+      await initializeHandDetection();
 
-    // ✅ IMPORTANT — Ensure Mediapipe files load from /public/mediapipe/
-    const hands = new Hands({
-      locateFile: (file) => `/mediapipe/${file}`,
-    });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      videoRef.current.srcObject = stream;
+      await videoRef.current.play();
 
-    hands.setOptions({
-      maxNumHands: 2,
-      modelComplexity: 1,
-      minDetectionConfidence: 0.6,
-      minTrackingConfidence: 0.6,
-    });
+      intervalId.current = setInterval(() => {
+        if (!videoRef.current) return;
+        const results = detectHands(videoRef.current);
+        if (!results) {
+          onPointer(null);
+          return;
+        }
 
-    hands.onResults((results) => {
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext("2d");
+        const hand = getNearestHand(results.landmarks);
+        if (!hand) {
+          onPointer(null);
+          return;
+        }
 
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
-
-      if (results.multiHandLandmarks) {
-        results.multiHandLandmarks.forEach((landmarks) => {
-          landmarks.forEach((p) => {
-            const x = p.x * canvas.width;
-            const y = p.y * canvas.height;
-            ctx.beginPath();
-            ctx.arc(x, y, 4, 0, Math.PI * 2);
-            ctx.fillStyle = "red";
-            ctx.fill();
-          });
+        onPointer({
+          x: hand[8].x, // index finger tip
+          y: hand[8].y,
+          isPinching: isPinching(hand),
+          isNormalized: true,
         });
+      }, 16); // ~60fps
+    };
+
+    setup();
+
+    return () => {
+      if (intervalId.current) clearInterval(intervalId.current);
+      if (videoRef.current?.srcObject) {
+        videoRef.current.srcObject.getTracks().forEach((t) => t.stop());
       }
-    });
-
-    const camera = new Camera(videoRef.current, {
-      onFrame: async () => {
-        await hands.send({ image: videoRef.current });
-      },
-      width: 640,
-      height: 480,
-    });
-
-    camera.start();
-
-    return () => camera.stop();
+    };
   }, []);
 
-  return (
-    <div style={{ position: "relative" }}>
-      <video ref={videoRef} style={{ display: "none" }} autoPlay muted />
-      <canvas
-        ref={canvasRef}
-        width={640}
-        height={480}
-        style={{ position: "absolute", top: 0, left: 0 }}
-      />
-    </div>
-  );
+  return <video ref={videoRef} style={{ display: "none" }} autoPlay muted playsInline />;
 }
