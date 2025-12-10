@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react"; 
+import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import Snowfall from "../components/Snowfall";
 import HandDetector from "../components/HandDetector";
@@ -17,14 +17,9 @@ export default function Game() {
 
   const getBase = () => Math.min(window.innerWidth, window.innerHeight);
 
-  // -----------------------------
-  // INITIAL OBJECT SETUP
-  // -----------------------------
   useEffect(() => {
     const BASE = getBase();
     const lineY = window.innerHeight - 150;
-    const leftX = 150;
-    const rightX = window.innerWidth - 150;
 
     const snowballs = [
       { id: 1, type: "snowball", img: "/snowball.png", r: BASE * 0.12 },
@@ -43,23 +38,22 @@ export default function Game() {
 
     let items = [];
     let y = lineY;
+
     snowballs.forEach((sb) => {
-      items.push({ ...sb, x: leftX, y });
+      items.push({ ...sb, x: 150, y });
       y -= 150;
     });
 
     let ay = lineY;
+
     accessories.forEach((a) => {
-      items.push({ ...a, x: rightX, y: ay });
+      items.push({ ...a, x: window.innerWidth - 150, y: ay });
       ay -= 150;
     });
 
     setObjects(items);
   }, []);
 
-  // -----------------------------
-  // TIMER
-  // -----------------------------
   useEffect(() => {
     if (gameFinished) return;
     const interval = setInterval(() => {
@@ -75,9 +69,6 @@ export default function Game() {
     return () => clearInterval(interval);
   }, [gameFinished]);
 
-  // -----------------------------
-  // HAND POINTER HANDLER
-  // -----------------------------
   const handlePointer = (hand) => {
     if (!hand) {
       pointerRef.current.isPinching = false;
@@ -89,10 +80,11 @@ export default function Game() {
     pointerRef.current.y = hand.y * window.innerHeight;
     pointerRef.current.isPinching = hand.isPinching;
 
+    // pick object
     if (hand.isPinching && !heldRef.current) {
-      // pick nearest object
       let nearest = null;
       let minD = Infinity;
+
       for (const o of objects) {
         const d = Math.hypot(pointerRef.current.x - o.x, pointerRef.current.y - o.y);
         if (d < o.r + 50 && d < minD) {
@@ -101,17 +93,17 @@ export default function Game() {
         }
       }
       if (nearest) heldRef.current = nearest.id;
-    } else if (!hand.isPinching) {
+    }
+
+    if (!hand.isPinching) {
       heldRef.current = null;
     }
   };
 
-  // -----------------------------
-  // DRAG LOOP
-  // -----------------------------
   useEffect(() => {
     const loop = setInterval(() => {
       if (!heldRef.current) return;
+
       setObjects((prev) =>
         prev.map((o) =>
           o.id === heldRef.current
@@ -120,12 +112,11 @@ export default function Game() {
         )
       );
     }, 16);
+
     return () => clearInterval(loop);
   }, []);
 
-  // -----------------------------
-  // RELEASE OBJECT (DROP)
-  // -----------------------------
+  // dropping logic
   useEffect(() => {
     const checkDrop = () => {
       if (!heldRef.current) return;
@@ -134,20 +125,22 @@ export default function Game() {
 
       const centerX = window.innerWidth / 2;
 
-      // stack snowballs
       if (heldObj.type === "snowball") {
         if (Math.abs(heldObj.x - centerX) < 200) {
           const newY = window.innerHeight - 160 - stack.length * 150;
+
           setStack((prev) => [...prev, { ...heldObj, x: centerX, y: newY }]);
           setObjects((prev) => prev.filter((o) => o.id !== heldRef.current));
+
           heldRef.current = null;
         }
       }
 
-      // attach accessories to top snowball
       const topBall = stack[stack.length - 1];
+
       if (topBall) {
         const d = Math.hypot(heldObj.x - topBall.x, heldObj.y - topBall.y);
+
         if (d < 120) {
           setStack((prev) =>
             prev.map((b, idx) =>
@@ -156,6 +149,7 @@ export default function Game() {
                 : b
             )
           );
+
           setObjects((prev) => prev.filter((o) => o.id !== heldRef.current));
           heldRef.current = null;
         }
@@ -166,67 +160,68 @@ export default function Game() {
     return () => clearInterval(interval);
   }, [objects, stack]);
 
-  const onRestart = () => navigate("/login");
-
-  // -----------------------------
-  // RENDER
-  // -----------------------------
   return (
-    <div className="w-full h-screen relative overflow-hidden"
-      style={{ backgroundImage: "url('/bg.png')", backgroundSize: "cover", backgroundPosition: "center" }}>
+    <div
+      className="w-full h-screen relative overflow-hidden"
+      style={{
+        backgroundImage: "url('/bg.png')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }}
+    >
       <Snowfall />
 
       <div className="absolute top-4 left-1/2 transform -translate-x-1/2 text-white text-4xl font-bold z-50">
         ⏱ {timeLeft}s
       </div>
 
-      {gameFinished && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50 p-4">
-          <div className="text-center text-white">
-            <div className="text-5xl font-bold mb-6">
-              {gameResult === "win" ? "🎉 You Win!" : "⏳ Time's Up!"}
-            </div>
-            <button onClick={onRestart} className="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-md text-white text-lg font-semibold">
-              Restart
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Snowman Stack */}
+      {/* SNOWMAN STACK */}
       {stack.map((ball, i) => (
-        <div key={i} className="absolute" style={{ left: ball.x - ball.r, top: ball.y - ball.r, width: ball.r * 2, height: ball.r * 2 }}>
+        <div
+          key={i}
+          className="absolute"
+          style={{
+            left: ball.x - ball.r,
+            top: ball.y - ball.r,
+            width: ball.r * 2,
+            height: ball.r * 2,
+          }}
+        >
           <img src="/snowball.png" style={{ width: "100%", height: "100%" }} />
-          {ball.eyes && <img src="/eyes.png" style={{ position: "absolute", left: ball.eyes.x - ball.x, top: ball.eyes.y - ball.y, width: ball.r }} />}
-          {ball.carrot && <img src="/carrot.png" style={{ position: "absolute", left: ball.carrot.x - ball.x, top: ball.carrot.y - ball.y, width: ball.r * 0.6, transform: "rotate(90deg)" }} />}
-          {ball.mouth && <img src="/mouth.png" style={{ position: "absolute", left: ball.mouth.x - ball.x, top: ball.mouth.y - ball.y, width: ball.r * 0.7 }} />}
-          {ball.hat && <img src="/hat.png" style={{ position: "absolute", left: ball.hat.x - ball.x - ball.r, top: ball.hat.y - ball.y - ball.r * 1.8, width: ball.r * 2 }} />}
-          {ball["hand-left"] && <img src="/hand-left.png" style={{ position: "absolute", left: ball["hand-left"].x - ball.x - ball.r, top: ball["hand-left"].y - ball.y, width: ball.r * 1.5 }} />}
-          {ball["hand-right"] && <img src="/hand-right.png" style={{ position: "absolute", left: ball["hand-right"].x - ball.x, top: ball["hand-right"].y - ball.y, width: ball.r * 1.5 }} />}
         </div>
       ))}
 
-      {/* Draggable Objects */}
+      {/* DRAGGABLE OBJECTS */}
       {objects.map((o) => (
-        <img key={o.id} src={o.img} style={{ position: "absolute", left: o.x - o.r, top: o.y - o.r, width: o.r * 2, height: o.r * 2, pointerEvents: "none" }} />
+        <img
+          key={o.id}
+          src={o.img}
+          style={{
+            position: "absolute",
+            left: o.x - o.r,
+            top: o.y - o.r,
+            width: o.r * 2,
+            height: o.r * 2,
+            pointerEvents: "none",
+          }}
+        />
       ))}
 
-      {/* VISIBLE HAND CURSOR */}
-      <div
+      {/* HAND CURSOR (ICON) */}
+      <img
+        src={pointerRef.current.isPinching ? "/hand-close.png" : "/hand-open.png"}
         style={{
           position: "absolute",
-          left: pointerRef.current.x - 15,
-          top: pointerRef.current.y - 15,
-          width: 30,
-          height: 30,
-          backgroundColor: pointerRef.current.isPinching ? "red" : "cyan",
-          borderRadius: "50%",
-          pointerEvents: "none",
+          left: pointerRef.current.x - 25,
+          top: pointerRef.current.y - 25,
+          width: 50,
+          height: 50,
           zIndex: 9999,
+          pointerEvents: "none",
         }}
+        draggable="false"
       />
 
-      {/* Hand Detector */}
       <HandDetector onPointer={handlePointer} />
     </div>
   );
