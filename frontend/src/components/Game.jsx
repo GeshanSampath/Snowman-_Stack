@@ -8,7 +8,7 @@ export default function Game() {
 
   const [objects, setObjects] = useState([]);
   const [stack, setStack] = useState([]);
-  const [timeLeft, setTimeLeft] = useState(60);
+  const [timeLeft, setTimeLeft] = useState(600);
   const [gameFinished, setGameFinished] = useState(false);
   const [gameResult, setGameResult] = useState("");
 
@@ -27,9 +27,9 @@ export default function Game() {
     const rightX = window.innerWidth - 150;
 
     const snowballs = [
-      { id: 1, type: "snowball", size: "big", img: "/snowball.png", r: BASE * 0.12 },
-      { id: 2, type: "snowball", size: "medium", img: "/snowball.png", r: BASE * 0.09 },
-      { id: 3, type: "snowball", size: "small", img: "/snowball.png", r: BASE * 0.07 },
+      { id: 1, type: "snowball", img: "/snowball.png", r: BASE * 0.12 },
+      { id: 2, type: "snowball", img: "/snowball.png", r: BASE * 0.09 },
+      { id: 3, type: "snowball", img: "/snowball.png", r: BASE * 0.07 },
     ];
 
     const accessories = [
@@ -210,6 +210,21 @@ export default function Game() {
       {objects.map((o) => (
         <img key={o.id} src={o.img} style={{ position: "absolute", left: o.x - o.r, top: o.y - o.r, width: o.r * 2, height: o.r * 2, pointerEvents: "none" }} />
       ))}
+
+      {/* VISIBLE HAND CURSOR */}
+      <div
+        style={{
+          position: "absolute",
+          left: pointerRef.current.x - 15,
+          top: pointerRef.current.y - 15,
+          width: 30,
+          height: 30,
+          backgroundColor: pointerRef.current.isPinching ? "red" : "cyan",
+          borderRadius: "50%",
+          pointerEvents: "none",
+          zIndex: 9999,
+        }}
+      />
 
       {/* Hand Detector */}
       <HandDetector onPointer={handlePointer} />
