@@ -14,57 +14,73 @@ export default function Game() {
   const heldRef = useRef(null);
   const objectsRef = useRef([]);
 
+  // --- DYNAMIC SIZING CONSTANTS ---
   const BASE = Math.min(window.innerWidth, window.innerHeight);
   const centerX = window.innerWidth / 2;
-  const baseY = window.innerHeight - 150;
+  const baseY = window.innerHeight - (BASE * 0.2); 
 
   // --- FINAL CREATIVE ALIGNMENT ---
   const snowmanStructure = [
-    // 1. Bottom Layer (Base Body) - z:1
-    { type: "snowball-base", x: centerX, y: baseY, r: BASE * 0.12, z: 1 },
+    // 1. Bottom Layer (Base) - z:1
+    { type: "snowball-base", x: centerX, y: baseY, r: BASE * 0.13, z: 1 },
     
-    // 2. Middle Layer (Middle Body) - z:2
-    { type: "snowball-middle", x: centerX, y: baseY - 140, r: BASE * 0.09, z: 2 },
-    
-    // HANDS: BIGGER & REALISTIC
-    { type: "hand-left", x: centerX - (BASE * 0.13), y: baseY - 140, r: BASE * 0.10, z: 1 },
-    { type: "hand-right", x: centerX + (BASE * 0.13), y: baseY - 140, r: BASE * 0.10, z: 1 },
+    // 2. Hands - Attached to body
+    { type: "hand-left", x: centerX - (BASE * 0.11), y: baseY - (BASE * 0.16), r: BASE * 0.08, z: 1 },
+    { type: "hand-right", x: centerX + (BASE * 0.11), y: baseY - (BASE * 0.16), r: BASE * 0.08, z: 1 },
 
-    // 3. Top Layer (Head Body) - z:3
-    { type: "snowball-head", x: centerX, y: baseY - 250, r: BASE * 0.07, z: 3 },
+    // 3. Middle Layer (Body) - z:2
+    { type: "snowball-middle", x: centerX, y: baseY - (BASE * 0.16), r: BASE * 0.10, z: 2 },
+
+    // 4. Scarf - ALIGNMENT FIX (LOWERED)
+    // Moved Y down to 0.20 (previously 0.215) so it sits on the shoulders.
+    // Kept slight left shift (0.02) to center the knot.
+    { type: "scarf", x: centerX - (BASE * 0.02), y: baseY - (BASE * 0.20), r: BASE * 0.09, z: 3 },
+
+    // 5. Top Layer (Head) - z:4
+    { type: "snowball-head", x: centerX, y: baseY - (BASE * 0.29), r: BASE * 0.075, z: 4 },
     
-    // 4. Accessories Layer (Face on Head)
-    { type: "hat", x: centerX, y: baseY - 320, r: BASE * 0.08, z: 4 },
-    { type: "eyes", x: centerX, y: baseY - 280, r: BASE * 0.06, z: 4 },
-    { type: "mouth", x: centerX, y: baseY - 220, r: BASE * 0.05, z: 4 },
-    
-    // CARROT: Bigger & Moved slightly RIGHT for creative alignment
-    // (BASE * 0.02) pushes it slightly off-center to the right
-    { type: "carrot", x: centerX + (BASE * 0.02), y: baseY - 250, r: BASE * 0.055, z: 5 }, 
+    // 6. Accessories (Face) - z:5 (Always on top)
+    { type: "mouth", x: centerX, y: baseY - (BASE * 0.26), r: BASE * 0.05, z: 5 },
+    { type: "eyes", x: centerX, y: baseY - (BASE * 0.31), r: BASE * 0.06, z: 5 },
+    { type: "carrot", x: centerX + (BASE * 0.01), y: baseY - (BASE * 0.28), r: BASE * 0.05, z: 5 },
+    { type: "hat", x: centerX, y: baseY - (BASE * 0.38), r: BASE * 0.09, z: 5 },
   ];
 
-  // Initialize objects
+  // --- INITIALIZATION ---
   useEffect(() => {
-    const lineY = window.innerHeight - 150;
+    // Define the items
     const snowballs = [
-      { id: 1, type: "snowball-base", img: "/snowball.png", r: BASE * 0.12 },
-      { id: 2, type: "snowball-middle", img: "/snowball.png", r: BASE * 0.09 },
-      { id: 3, type: "snowball-head", img: "/snowball.png", r: BASE * 0.07 },
+      { id: 1, type: "snowball-base", img: "/snowball.png", r: BASE * 0.13 },
+      { id: 2, type: "snowball-middle", img: "/snowball.png", r: BASE * 0.10 },
+      { id: 3, type: "snowball-head", img: "/snowball.png", r: BASE * 0.075 },
     ];
+    
     const accessories = [
-      { id: 100, type: "carrot", img: "/carrot.png", r: BASE * 0.055 }, // Updated radius
+      { id: 100, type: "carrot", img: "/carrot.png", r: BASE * 0.05 },
       { id: 101, type: "eyes", img: "/eyes.png", r: BASE * 0.06 },
       { id: 102, type: "mouth", img: "/mouth.png", r: BASE * 0.05 },
-      { id: 103, type: "hat", img: "/hat.png", r: BASE * 0.08 },
-      { id: 104, type: "hand-left", img: "/hand-left.png", r: BASE * 0.10 },
-      { id: 105, type: "hand-right", img: "/hand-right.png", r: BASE * 0.10 },
+      { id: 103, type: "hat", img: "/hat.png", r: BASE * 0.09 },
+      { id: 104, type: "hand-left", img: "/hand-left.png", r: BASE * 0.08 },
+      { id: 105, type: "hand-right", img: "/hand-right.png", r: BASE * 0.08 },
+      // Using 'scaf.png' based on your file name
+      { id: 106, type: "scarf", img: "/scarf.png", r: BASE * 0.09 },
     ];
 
     let items = [];
-    let y = lineY;
-    snowballs.forEach((sb) => items.push({ ...sb, x: 150, y, locked: false }) && (y -= 150));
-    let ay = lineY;
-    accessories.forEach((a) => items.push({ ...a, x: window.innerWidth - 150, y: ay, locked: false }) && (ay -= 150));
+
+    // Left Shelf (Snowballs)
+    const leftX = 120;
+    const spacingLeft = (window.innerHeight - 100) / snowballs.length;
+    snowballs.forEach((sb, index) => {
+      items.push({ ...sb, x: leftX, y: 100 + (index * spacingLeft), locked: false });
+    });
+
+    // Right Shelf (Accessories)
+    const rightX = window.innerWidth - 120;
+    const spacingRight = (window.innerHeight - 100) / accessories.length;
+    accessories.forEach((acc, index) => {
+      items.push({ ...acc, x: rightX, y: 80 + (index * spacingRight), locked: false });
+    });
 
     setObjects(items);
     objectsRef.current = items;
@@ -119,7 +135,7 @@ export default function Game() {
         if (o.locked) continue;
         const d = Math.hypot(pointer.x - o.x, pointer.y - o.y);
         // Grab radius
-        if (d < o.r + 50 && d < minD) {
+        if (d < o.r + 60 && d < minD) {
           minD = d;
           nearest = o;
         }
@@ -183,16 +199,24 @@ export default function Game() {
     <div className="w-full h-screen relative overflow-hidden" style={{ backgroundImage: "url('/bg.png')", backgroundSize: "cover", backgroundPosition: "center" }}>
       <Snowfall />
 
-      <div className="absolute top-4 left-1/2 transform -translate-x-1/2 text-white text-4xl font-bold z-50">
+      <div className="absolute top-4 left-1/2 transform -translate-x-1/2 text-white text-4xl font-bold z-50 drop-shadow-md">
         ⏱ {timeLeft}s
       </div>
 
       {/* Guide Outlines */}
       {snowmanStructure.map((part, i) => (
-        <div key={i} className="absolute border-2 border-white rounded-full" style={{ left: part.x - part.r, top: part.y - part.r, width: part.r * 2, height: part.r * 2, opacity: 0.2, pointerEvents: "none", zIndex: 0 }} />
+        <div key={i} className="absolute border-2 border-white border-dashed rounded-full opacity-30" 
+             style={{ 
+               left: part.x - part.r, 
+               top: part.y - part.r, 
+               width: part.r * 2, 
+               height: part.r * 2, 
+               zIndex: 0 
+             }} 
+        />
       ))}
 
-      {/* Stacked/Completed Objects (Using dynamic zIndex) */}
+      {/* Stacked/Completed Objects */}
       {stack.map((o, i) => {
         const struct = snowmanStructure.find(s => s.type === o.type);
         return (
@@ -213,19 +237,44 @@ export default function Game() {
         );
       })}
 
-      {/* Active Objects (Draggable) */}
+      {/* Active Draggable Objects */}
       {objects.map((o) => (
-        <img key={o.id} src={o.img} alt={o.type} style={{ position: "absolute", left: o.x - o.r, top: o.y - o.r, width: o.r * 2, height: o.r * 2, pointerEvents: "none", zIndex: 99 }} />
+        <img key={o.id} src={o.img} alt={o.type} 
+             className="transition-transform duration-100"
+             style={{ 
+               position: "absolute", 
+               left: o.x - o.r, 
+               top: o.y - o.r, 
+               width: o.r * 2, 
+               height: o.r * 2, 
+               pointerEvents: "none", 
+               zIndex: 99,
+               filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.3))" 
+             }} />
       ))}
 
       {/* Hand Cursor */}
-      <img src={cursor.isPinching ? "/hand-close.png" : "/hand-open.png"} alt="cursor" style={{ position: "absolute", left: cursor.x - 25, top: cursor.y - 25, width: 50, height: 50, zIndex: 9999, pointerEvents: "none" }} draggable="false" />
+      <img src={cursor.isPinching ? "/hand-close.png" : "/hand-open.png"} 
+           alt="cursor" 
+           style={{ 
+             position: "absolute", 
+             left: cursor.x - 25, 
+             top: cursor.y - 25, 
+             width: 50, 
+             height: 50, 
+             zIndex: 9999, 
+             pointerEvents: "none",
+             transition: "transform 0.1s"
+           }} 
+           draggable="false" />
 
-      {/* In-game modal */}
+      {/* Modal */}
       {modalMessage && (
-        <div className="absolute top-1/3 left-1/2 transform -translate-x-1/2 bg-white rounded-xl p-6 shadow-xl z-50 w-80 text-center" style={{ pointerEvents: "auto" }}>
-          <h2 className="text-xl font-bold mb-4">{modalMessage}</h2>
-          <button onClick={() => window.location.reload()} className="bg-blue-500 text-white px-5 py-2 rounded-lg font-bold hover:bg-blue-600 transition">Restart Game</button>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl p-8 shadow-2xl z-50 text-center border-4 border-blue-200">
+          <h2 className="text-2xl font-bold mb-6 text-gray-800">{modalMessage}</h2>
+          <button onClick={() => window.location.reload()} className="bg-blue-500 text-white px-8 py-3 rounded-full font-bold text-lg hover:bg-blue-600 transition shadow-lg">
+            Play Again
+          </button>
         </div>
       )}
 
