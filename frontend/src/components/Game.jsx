@@ -24,26 +24,28 @@ export default function Game() {
     // 1. Bottom Layer (Base) - z:1
     { type: "snowball-base", x: centerX, y: baseY, r: BASE * 0.13, z: 1 },
     
-    // 2. Hands - Attached to body
-    { type: "hand-left", x: centerX - (BASE * 0.11), y: baseY - (BASE * 0.16), r: BASE * 0.08, z: 1 },
-    { type: "hand-right", x: centerX + (BASE * 0.11), y: baseY - (BASE * 0.16), r: BASE * 0.08, z: 1 },
+    // 2. Hands - CLOSED CONNECTION
+    // Middle Ball Radius is 0.10.
+    // X set to 0.13. This brings the "stick" part of the arm INSIDE the snowball radius.
+    // z:1 ensures the insertion point is hidden behind the body (z:2).
+    { type: "hand-left", x: centerX - (BASE * 0.13), y: baseY - (BASE * 0.16), r: BASE * 0.08, z: 1 },
+    { type: "hand-right", x: centerX + (BASE * 0.13), y: baseY - (BASE * 0.16), r: BASE * 0.08, z: 1 },
 
     // 3. Middle Layer (Body) - z:2
     { type: "snowball-middle", x: centerX, y: baseY - (BASE * 0.16), r: BASE * 0.10, z: 2 },
 
-    // 4. Scarf - ALIGNMENT FIX (LOWERED)
-    // Moved Y down to 0.20 (previously 0.215) so it sits on the shoulders.
-    // Kept slight left shift (0.02) to center the knot.
-    { type: "scarf", x: centerX - (BASE * 0.02), y: baseY - (BASE * 0.20), r: BASE * 0.09, z: 3 },
+    // 4. Scarf - LOWERED TO SHOULDERS
+    // y: 0.18 sits firmly on the shoulders.
+    { type: "scarf", x: centerX - (BASE * 0.02), y: baseY - (BASE * 0.18), r: BASE * 0.09, z: 5 },
 
     // 5. Top Layer (Head) - z:4
     { type: "snowball-head", x: centerX, y: baseY - (BASE * 0.29), r: BASE * 0.075, z: 4 },
     
-    // 6. Accessories (Face) - z:5 (Always on top)
-    { type: "mouth", x: centerX, y: baseY - (BASE * 0.26), r: BASE * 0.05, z: 5 },
-    { type: "eyes", x: centerX, y: baseY - (BASE * 0.31), r: BASE * 0.06, z: 5 },
-    { type: "carrot", x: centerX + (BASE * 0.01), y: baseY - (BASE * 0.28), r: BASE * 0.05, z: 5 },
-    { type: "hat", x: centerX, y: baseY - (BASE * 0.38), r: BASE * 0.09, z: 5 },
+    // 6. Accessories (Face) - z:6 (Highest priority)
+    { type: "mouth", x: centerX, y: baseY - (BASE * 0.26), r: BASE * 0.05, z: 6 },
+    { type: "eyes", x: centerX, y: baseY - (BASE * 0.31), r: BASE * 0.06, z: 6 },
+    { type: "carrot", x: centerX + (BASE * 0.01), y: baseY - (BASE * 0.28), r: BASE * 0.05, z: 6 },
+    { type: "hat", x: centerX, y: baseY - (BASE * 0.38), r: BASE * 0.09, z: 6 },
   ];
 
   // --- INITIALIZATION ---
