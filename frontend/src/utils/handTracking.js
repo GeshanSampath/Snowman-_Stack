@@ -18,16 +18,15 @@ export function handTrackInit(videoElement, onPointer) {
 
   hands.onResults((results) => {
     if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
-      // Optional: Pass null or keep last known position. Passing null hides cursor/resets pinch.
       onPointer(null);
       return;
     }
 
     const lm = results.multiHandLandmarks[0];
-    const indexTip = lm[8]; // index fingertip
-    const thumbTip = lm[4]; // thumb tip
+    const indexTip = lm[8];
+    const thumbTip = lm[4];
 
-    // Convert to screen coordinates (Mirror horizontal)
+    // Convert to screen coordinates (mirror horizontal)
     const x = (1 - indexTip.x) * window.innerWidth;
     const y = indexTip.y * window.innerHeight;
 
@@ -36,7 +35,7 @@ export function handTrackInit(videoElement, onPointer) {
     const dy = indexTip.y - thumbTip.y;
     const pinchDistance = Math.hypot(dx, dy);
     
-    // 0.1 is usually a good "tight pinch" threshold, 0.12 is a bit looser
+    // Threshold for pinch (grab)
     const isPinching = pinchDistance < 0.1; 
 
     onPointer({ x, y, isPinching });
@@ -44,7 +43,7 @@ export function handTrackInit(videoElement, onPointer) {
 
   const camera = new Camera(videoElement, {
     onFrame: async () => {
-      if(videoElement) await hands.send({ image: videoElement });
+      if (videoElement) await hands.send({ image: videoElement });
     },
     width: 640,
     height: 480,
@@ -54,6 +53,5 @@ export function handTrackInit(videoElement, onPointer) {
 
   return () => {
     camera.stop();
-    hands.close();
   };
 }

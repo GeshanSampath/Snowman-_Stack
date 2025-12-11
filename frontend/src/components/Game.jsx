@@ -5,33 +5,42 @@ import HandDetector from "../components/HandDetector";
 export default function Game() {
   const [objects, setObjects] = useState([]);
   const [stack, setStack] = useState([]);
-  const [timeLeft, setTimeLeft] = useState(600);
+  const [timeLeft, setTimeLeft] = useState(120);
   const [gameFinished, setGameFinished] = useState(false);
   const [cursor, setCursor] = useState({ x: 0, y: 0, isPinching: false });
   const [modalMessage, setModalMessage] = useState("");
 
-  // Refs for state that needs to be accessed inside the animation loop
   const pointerRef = useRef({ x: 0, y: 0, isPinching: false });
   const heldRef = useRef(null);
-  
-  // We keep a ref of objects so the pointer logic always sees current data
-  // without triggering re-renders or stale closures
   const objectsRef = useRef([]);
 
   const BASE = Math.min(window.innerWidth, window.innerHeight);
   const centerX = window.innerWidth / 2;
   const baseY = window.innerHeight - 150;
 
+  // --- FINAL CREATIVE ALIGNMENT ---
   const snowmanStructure = [
-    { type: "snowball-base", x: centerX, y: baseY, r: BASE * 0.12 },
-    { type: "snowball-middle", x: centerX, y: baseY - 150, r: BASE * 0.09 },
-    { type: "snowball-head", x: centerX, y: baseY - 270, r: BASE * 0.07 },
-    { type: "eyes", x: centerX, y: baseY - 270, r: BASE * 0.06 },
-    { type: "mouth", x: centerX, y: baseY - 250, r: BASE * 0.05 },
-    { type: "carrot", x: centerX, y: baseY - 240, r: BASE * 0.045 },
-    { type: "hat", x: centerX, y: baseY - 320, r: BASE * 0.08 },
-    { type: "hand-left", x: centerX - 90, y: baseY - 200, r: BASE * 0.07 },
-    { type: "hand-right", x: centerX + 90, y: baseY - 200, r: BASE * 0.07 },
+    // 1. Bottom Layer (Base Body) - z:1
+    { type: "snowball-base", x: centerX, y: baseY, r: BASE * 0.12, z: 1 },
+    
+    // 2. Middle Layer (Middle Body) - z:2
+    { type: "snowball-middle", x: centerX, y: baseY - 140, r: BASE * 0.09, z: 2 },
+    
+    // HANDS: BIGGER & REALISTIC
+    { type: "hand-left", x: centerX - (BASE * 0.13), y: baseY - 140, r: BASE * 0.10, z: 1 },
+    { type: "hand-right", x: centerX + (BASE * 0.13), y: baseY - 140, r: BASE * 0.10, z: 1 },
+
+    // 3. Top Layer (Head Body) - z:3
+    { type: "snowball-head", x: centerX, y: baseY - 250, r: BASE * 0.07, z: 3 },
+    
+    // 4. Accessories Layer (Face on Head)
+    { type: "hat", x: centerX, y: baseY - 320, r: BASE * 0.08, z: 4 },
+    { type: "eyes", x: centerX, y: baseY - 280, r: BASE * 0.06, z: 4 },
+    { type: "mouth", x: centerX, y: baseY - 220, r: BASE * 0.05, z: 4 },
+    
+    // CARROT: Bigger & Moved slightly RIGHT for creative alignment
+    // (BASE * 0.02) pushes it slightly off-center to the right
+    { type: "carrot", x: centerX + (BASE * 0.02), y: baseY - 250, r: BASE * 0.055, z: 5 }, 
   ];
 
   // Initialize objects
@@ -43,12 +52,12 @@ export default function Game() {
       { id: 3, type: "snowball-head", img: "/snowball.png", r: BASE * 0.07 },
     ];
     const accessories = [
-      { id: 100, type: "carrot", img: "/carrot.png", r: BASE * 0.045 },
+      { id: 100, type: "carrot", img: "/carrot.png", r: BASE * 0.055 }, // Updated radius
       { id: 101, type: "eyes", img: "/eyes.png", r: BASE * 0.06 },
       { id: 102, type: "mouth", img: "/mouth.png", r: BASE * 0.05 },
       { id: 103, type: "hat", img: "/hat.png", r: BASE * 0.08 },
-      { id: 104, type: "hand-left", img: "/hand-left.png", r: BASE * 0.07 },
-      { id: 105, type: "hand-right", img: "/hand-right.png", r: BASE * 0.07 },
+      { id: 104, type: "hand-left", img: "/hand-left.png", r: BASE * 0.10 },
+      { id: 105, type: "hand-right", img: "/hand-right.png", r: BASE * 0.10 },
     ];
 
     let items = [];
@@ -58,23 +67,20 @@ export default function Game() {
     accessories.forEach((a) => items.push({ ...a, x: window.innerWidth - 150, y: ay, locked: false }) && (ay -= 150));
 
     setObjects(items);
-    objectsRef.current = items; // Sync ref
+    objectsRef.current = items;
   }, []);
 
-  // Sync objectsRef whenever objects state changes
   useEffect(() => {
     objectsRef.current = objects;
   }, [objects]);
 
-  // Win Condition Checker (Runs whenever stack changes)
+  // Win Condition
   useEffect(() => {
     if (stack.length === 0) return;
-    
     const allPlaced = snowmanStructure.every((target) => 
       stack.find((s) => s.type === target.type)
     );
-
-    if (allPlaced) {
+    if (allPlaced && !gameFinished) {
       endGame("🎉 You built the snowman! You win!");
     }
   }, [stack]);
@@ -95,7 +101,6 @@ export default function Game() {
     return () => clearInterval(timer);
   }, [gameFinished]);
 
-  // Handle pointer (hand/mouse)
   const handlePointer = (pointer) => {
     if (!pointer) {
       pointerRef.current.isPinching = false;
@@ -106,16 +111,14 @@ export default function Game() {
     const prevPinch = pointerRef.current.isPinching;
     pointerRef.current = pointer;
 
-    // Pick nearest object (not locked) on pinch start
+    // Pick nearest object
     if (pointer.isPinching && !prevPinch && !heldRef.current) {
       let nearest = null;
       let minD = Infinity;
-      
-      // Use objectsRef to ensure we have the latest list
       for (const o of objectsRef.current) {
         if (o.locked) continue;
         const d = Math.hypot(pointer.x - o.x, pointer.y - o.y);
-        // Slightly increased grab radius for better UX
+        // Grab radius
         if (d < o.r + 50 && d < minD) {
           minD = d;
           nearest = o;
@@ -131,27 +134,11 @@ export default function Game() {
     }
   };
 
-  // Mouse support
-  useEffect(() => {
-    const onMouseMove = (e) => handlePointer({ x: e.clientX, y: e.clientY, isPinching: e.buttons === 1 });
-    const onMouseUp = () => handlePointer({ ...pointerRef.current, isPinching: false });
-    
-    window.addEventListener("mousemove", onMouseMove);
-    window.addEventListener("mousedown", onMouseMove);
-    window.addEventListener("mouseup", onMouseUp);
-    return () => {
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("mousedown", onMouseMove);
-      window.removeEventListener("mouseup", onMouseUp);
-    };
-  }, []); // Empty dependency array is safe now because handlePointer uses refs
-
-  // Drag loop
+  // Animation Loop
   useEffect(() => {
     let animationId;
     const loop = () => {
       setCursor({ ...pointerRef.current });
-      
       if (heldRef.current) {
         setObjects((prev) => {
           const next = prev.map((o) =>
@@ -159,7 +146,7 @@ export default function Game() {
               ? { ...o, x: pointerRef.current.x, y: pointerRef.current.y }
               : o
           );
-          objectsRef.current = next; // Keep ref in sync during drag
+          objectsRef.current = next;
           return next;
         });
       }
@@ -169,9 +156,7 @@ export default function Game() {
     return () => cancelAnimationFrame(animationId);
   }, []);
 
-  // Drop logic with locking
   const tryDrop = (id) => {
-    // Find object in the REF to ensure we have it
     const heldObj = objectsRef.current.find((o) => o.id === id);
     if (!heldObj) return;
 
@@ -182,15 +167,10 @@ export default function Game() {
     const dy = target.y - heldObj.y;
     const dist = Math.hypot(dx, dy);
 
-    // Drop threshold
+    // Drop distance threshold
     if (dist < 150) {
-        // 1. Add to stack (Snap to target coordinates)
-        setStack((prev) => [...prev, { ...heldObj, x: target.x, y: target.y, locked: true }]);
-        
-        // 2. Remove from active objects
-        setObjects((prev) => prev.filter((o) => o.id !== id));
-        
-        // Note: Win check is now handled by the useEffect watching [stack]
+      setStack((prev) => [...prev, { ...heldObj, x: target.x, y: target.y, locked: true }]);
+      setObjects((prev) => prev.filter((o) => o.id !== id));
     }
   };
 
@@ -203,27 +183,42 @@ export default function Game() {
     <div className="w-full h-screen relative overflow-hidden" style={{ backgroundImage: "url('/bg.png')", backgroundSize: "cover", backgroundPosition: "center" }}>
       <Snowfall />
 
-      {/* Timer */}
       <div className="absolute top-4 left-1/2 transform -translate-x-1/2 text-white text-4xl font-bold z-50">
         ⏱ {timeLeft}s
       </div>
 
-      {/* Snowman outline */}
+      {/* Guide Outlines */}
       {snowmanStructure.map((part, i) => (
-        <div key={i} className="absolute border-2 border-white rounded-full" style={{ left: part.x - part.r, top: part.y - part.r, width: part.r * 2, height: part.r * 2, opacity: 0.3, pointerEvents: "none" }} />
+        <div key={i} className="absolute border-2 border-white rounded-full" style={{ left: part.x - part.r, top: part.y - part.r, width: part.r * 2, height: part.r * 2, opacity: 0.2, pointerEvents: "none", zIndex: 0 }} />
       ))}
 
-      {/* Placed objects (locked) */}
-      {stack.map((o, i) => (
-        <img key={i} src={o.img} alt={o.type} style={{ position: "absolute", left: o.x - o.r, top: o.y - o.r, width: o.r * 2, height: o.r * 2, pointerEvents: "none" }} />
-      ))}
+      {/* Stacked/Completed Objects (Using dynamic zIndex) */}
+      {stack.map((o, i) => {
+        const struct = snowmanStructure.find(s => s.type === o.type);
+        return (
+          <img 
+            key={i} 
+            src={o.img} 
+            alt={o.type}
+            style={{ 
+              position: "absolute", 
+              left: o.x - o.r, 
+              top: o.y - o.r, 
+              width: o.r * 2, 
+              height: o.r * 2, 
+              pointerEvents: "none",
+              zIndex: struct ? struct.z : 1 
+            }} 
+          />
+        );
+      })}
 
-      {/* Draggable objects */}
+      {/* Active Objects (Draggable) */}
       {objects.map((o) => (
-        <img key={o.id} src={o.img} alt={o.type} style={{ position: "absolute", left: o.x - o.r, top: o.y - o.r, width: o.r * 2, height: o.r * 2, pointerEvents: "none" }} />
+        <img key={o.id} src={o.img} alt={o.type} style={{ position: "absolute", left: o.x - o.r, top: o.y - o.r, width: o.r * 2, height: o.r * 2, pointerEvents: "none", zIndex: 99 }} />
       ))}
 
-      {/* Hand cursor */}
+      {/* Hand Cursor */}
       <img src={cursor.isPinching ? "/hand-close.png" : "/hand-open.png"} alt="cursor" style={{ position: "absolute", left: cursor.x - 25, top: cursor.y - 25, width: 50, height: 50, zIndex: 9999, pointerEvents: "none" }} draggable="false" />
 
       {/* In-game modal */}
@@ -234,7 +229,6 @@ export default function Game() {
         </div>
       )}
 
-      {/* We pass the handlePointer, which HandDetector will save in a ref */}
       <HandDetector onPointer={handlePointer} />
     </div>
   );
