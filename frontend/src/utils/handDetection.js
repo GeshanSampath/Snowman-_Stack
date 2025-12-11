@@ -9,34 +9,55 @@ export function handTrackInit(videoElement, onPointer) {
 
   hands.setOptions({
     maxNumHands: 1,
-    modelComplexity: 1,
-    minDetectionConfidence: 0.6,
-    minTrackingConfidence: 0.6,
+    modelComplexity: 0,          // fastest
+    minDetectionConfidence: 0.5,
+    minTrackingConfidence: 0.5,
+    smoothLandmarks: false,      // remove extra smoothing delay
   });
 
   hands.onResults((results) => {
-    if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
+    if (
+      !results.multiHandLandmarks ||
+      results.multiHandLandmarks.length === 0
+    ) {
       onPointer(null);
       return;
     }
 
     const lm = results.multiHandLandmarks[0];
 
-    const indexTip = lm[8];
-    const thumbTip = lm[4];
+    // **MIRROR** x axis so hand moves correctly right/left
+    const pointerX = 1 - lm[8].x;
+    const pointerY = lm[8].y;
 
-    const dx = indexTip.x - thumbTip.x;
-    const dy = indexTip.y - thumbTip.y;
+    // -------------------------------
+    //  REAL HAND CLOSE (FIST) DETECTION
+    // -------------------------------
+    // finger tip IDs     => [thumb, index, middle, ring, pinky]
+    const tipIds = [4, 8, 12, 16, 20];
 
-    const pinch = Math.hypot(dx, dy) < 0.05;
+    let closedCount = 0;
+    for (let id of tipIds) {
+      const tip = lm[id];
+      const pip = lm[id - 2]; // joint below fingertip
 
+      // If fingertip goes BELOW knuckle → finger folded
+      if (tip.y > pip.y) {
+        closedCount++;
+      }
+    }
+
+    const handClosed = closedCount >= 3; // 3+ fingers folded = "hand is closed"
+
+    // Output to game
     onPointer({
-      x: indexTip.x,
-      y: indexTip.y,
-      isPinching: pinch,
+      x: pointerX,
+      y: pointerY,
+      handClosed,   // TRUE = grab, FALSE = drop
     });
   });
 
+  // CAMERA
   const camera = new Camera(videoElement, {
     onFrame: async () => {
       await hands.send({ image: videoElement });

@@ -5,7 +5,7 @@ import HandDetector from "../components/HandDetector";
 export default function Game() {
   const [objects, setObjects] = useState([]);
   const [stack, setStack] = useState([]);
-  const [timeLeft, setTimeLeft] = useState(60);
+  const [timeLeft, setTimeLeft] = useState(600);
   const [gameFinished, setGameFinished] = useState(false);
   const [cursor, setCursor] = useState({ x: 0, y: 0, isPinching: false });
   const [modalMessage, setModalMessage] = useState("");
