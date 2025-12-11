@@ -9,57 +9,47 @@ export function handTrackInit(videoElement, onPointer) {
 
   hands.setOptions({
     maxNumHands: 1,
-    modelComplexity: 0,          // fastest
+    modelComplexity: 0,          // Faster, lower delay
     minDetectionConfidence: 0.5,
     minTrackingConfidence: 0.5,
-    smoothLandmarks: false,      // remove extra smoothing delay
+    smoothLandmarks: false,      // Remove lag completely
   });
 
   hands.onResults((results) => {
-    if (
-      !results.multiHandLandmarks ||
-      results.multiHandLandmarks.length === 0
-    ) {
+    if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
       onPointer(null);
       return;
     }
 
     const lm = results.multiHandLandmarks[0];
 
-    // **MIRROR** x axis so hand moves correctly right/left
-    const pointerX = 1 - lm[8].x;
-    const pointerY = lm[8].y;
+    // Finger tips
+    const indexTip = lm[8];
+    const thumbTip = lm[4];
 
-    // -------------------------------
-    //  REAL HAND CLOSE (FIST) DETECTION
-    // -------------------------------
-    // finger tip IDs     => [thumb, index, middle, ring, pinky]
-    const tipIds = [4, 8, 12, 16, 20];
+    // MIRROR FIX (right -> right)
+    const mirroredX = 1 - indexTip.x;
 
-    let closedCount = 0;
-    for (let id of tipIds) {
-      const tip = lm[id];
-      const pip = lm[id - 2]; // joint below fingertip
+    // Improved pinch detection
+    const dx = indexTip.x - thumbTip.x;
+    const dy = indexTip.y - thumbTip.y;
+    const pinchDistance = Math.hypot(dx, dy);
 
-      // If fingertip goes BELOW knuckle → finger folded
-      if (tip.y > pip.y) {
-        closedCount++;
-      }
-    }
+    // Slightly increased threshold = more responsive grab
+    const isPinching = pinchDistance < 0.06;
 
-    const handClosed = closedCount >= 3; // 3+ fingers folded = "hand is closed"
-
-    // Output to game
+    // Send cleaned pointer data
     onPointer({
-      x: pointerX,
-      y: pointerY,
-      handClosed,   // TRUE = grab, FALSE = drop
+      x: mirroredX,   // FIXED LEFT/RIGHT
+      y: indexTip.y,
+      isPinching,
     });
   });
 
-  // CAMERA
+  // Camera initialization
   const camera = new Camera(videoElement, {
     onFrame: async () => {
+      // NO pipeline lag
       await hands.send({ image: videoElement });
     },
     width: 640,
