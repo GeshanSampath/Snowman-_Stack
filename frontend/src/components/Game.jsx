@@ -19,7 +19,6 @@ export default function Game() {
   const centerX = window.innerWidth / 2;
   const baseY = window.innerHeight - 150;
 
-  // Snowman outline structure
   const snowmanStructure = [
     { type: "snowball-base", x: centerX, y: baseY, r: BASE * 0.12 },
     { type: "snowball-middle", x: centerX, y: baseY - 150, r: BASE * 0.09 },
@@ -32,7 +31,6 @@ export default function Game() {
     { type: "hand-right", x: centerX + 90, y: baseY - 200, r: BASE * 0.07 },
   ];
 
-  // Initialize draggable objects
   useEffect(() => {
     const lineY = window.innerHeight - 150;
 
@@ -83,24 +81,22 @@ export default function Game() {
     return () => clearInterval(timer);
   }, [gameFinished]);
 
-  // Handle pointer (hand or mouse)
-  const handlePointer = (hand) => {
-    if (!hand) {
+  // Handle pointer
+  const handlePointer = (pointer) => {
+    if (!pointer) {
       pointerRef.current.isPinching = false;
       heldRef.current = null;
       return;
     }
 
-    pointerRef.current.x = hand.x * window.innerWidth;
-    pointerRef.current.y = hand.y * window.innerHeight;
-    pointerRef.current.isPinching = hand.isPinching;
+    pointerRef.current = pointer;
 
     // Pick object
-    if (hand.isPinching && !heldRef.current) {
+    if (pointer.isPinching && !heldRef.current) {
       let nearest = null;
       let minD = Infinity;
       for (const o of objects) {
-        const d = Math.hypot(pointerRef.current.x - o.x, pointerRef.current.y - o.y);
+        const d = Math.hypot(pointer.x - o.x, pointer.y - o.y);
         if (d < o.r + 50 && d < minD) {
           minD = d;
           nearest = o;
@@ -110,16 +106,16 @@ export default function Game() {
     }
 
     // Release object
-    if (!hand.isPinching && heldRef.current) {
+    if (!pointer.isPinching && heldRef.current) {
       tryDrop(heldRef.current);
       heldRef.current = null;
     }
   };
 
-  // Mouse support for testing
+  // Mouse support
   useEffect(() => {
     const onMouseMove = (e) => {
-      handlePointer({ x: e.clientX / window.innerWidth, y: e.clientY / window.innerHeight, isPinching: e.buttons === 1 });
+      handlePointer({ x: e.clientX, y: e.clientY, isPinching: e.buttons === 1 });
     };
     window.addEventListener("mousemove", onMouseMove);
     window.addEventListener("mousedown", onMouseMove);
@@ -138,11 +134,7 @@ export default function Game() {
   useEffect(() => {
     let animationId;
     const loop = () => {
-      setCursor({
-        x: pointerRef.current.x,
-        y: pointerRef.current.y,
-        isPinching: pointerRef.current.isPinching,
-      });
+      setCursor({ ...pointerRef.current });
 
       if (heldRef.current) {
         setObjects((prev) =>
@@ -181,8 +173,7 @@ export default function Game() {
 
   const checkWin = () => {
     for (const target of snowmanStructure) {
-      const placed = stackRef.current.find((s) => s.type === target.type);
-      if (!placed) return false;
+      if (!stackRef.current.find((s) => s.type === target.type)) return false;
     }
     return true;
   };
@@ -271,7 +262,7 @@ export default function Game() {
         draggable="false"
       />
 
-      {/* In-game popup modal */}
+      {/* In-game modal */}
       {modalMessage && (
         <div
           className="absolute top-1/3 left-1/2 transform -translate-x-1/2 bg-white rounded-xl p-6 shadow-xl z-50 w-80 text-center"

@@ -9,10 +9,10 @@ export function handTrackInit(videoElement, onPointer) {
 
   hands.setOptions({
     maxNumHands: 1,
-    modelComplexity: 0,          // Faster, lower delay
+    modelComplexity: 0,
     minDetectionConfidence: 0.5,
     minTrackingConfidence: 0.5,
-    smoothLandmarks: false,      // Remove lag completely
+    smoothLandmarks: true,
   });
 
   hands.onResults((results) => {
@@ -22,34 +22,23 @@ export function handTrackInit(videoElement, onPointer) {
     }
 
     const lm = results.multiHandLandmarks[0];
-
-    // Finger tips
     const indexTip = lm[8];
     const thumbTip = lm[4];
 
-    // MIRROR FIX (right -> right)
-    const mirroredX = 1 - indexTip.x;
+    // Mirror X and map to screen coordinates
+    const x = (1 - indexTip.x) * window.innerWidth;
+    const y = indexTip.y * window.innerHeight;
 
-    // Improved pinch detection
     const dx = indexTip.x - thumbTip.x;
     const dy = indexTip.y - thumbTip.y;
     const pinchDistance = Math.hypot(dx, dy);
+    const isPinching = pinchDistance < 0.12; // easier grab
 
-    // Slightly increased threshold = more responsive grab
-    const isPinching = pinchDistance < 0.06;
-
-    // Send cleaned pointer data
-    onPointer({
-      x: mirroredX,   // FIXED LEFT/RIGHT
-      y: indexTip.y,
-      isPinching,
-    });
+    onPointer({ x, y, isPinching });
   });
 
-  // Camera initialization
   const camera = new Camera(videoElement, {
     onFrame: async () => {
-      // NO pipeline lag
       await hands.send({ image: videoElement });
     },
     width: 640,
@@ -57,4 +46,6 @@ export function handTrackInit(videoElement, onPointer) {
   });
 
   camera.start();
+
+  return () => camera.stop();
 }
