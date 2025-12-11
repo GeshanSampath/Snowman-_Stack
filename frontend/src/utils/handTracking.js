@@ -2,6 +2,8 @@ import { Hands } from "@mediapipe/hands";
 import { Camera } from "@mediapipe/camera_utils";
 
 export function handTrackInit(videoElement, onPointer) {
+  if (!videoElement) return () => {};
+
   const hands = new Hands({
     locateFile: (file) =>
       `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
@@ -9,37 +11,40 @@ export function handTrackInit(videoElement, onPointer) {
 
   hands.setOptions({
     maxNumHands: 1,
-    modelComplexity: 0,
-    minDetectionConfidence: 0.5,
-    minTrackingConfidence: 0.5,
-    smoothLandmarks: true,
+    modelComplexity: 1,
+    minDetectionConfidence: 0.7,
+    minTrackingConfidence: 0.7,
   });
 
   hands.onResults((results) => {
     if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
+      // Optional: Pass null or keep last known position. Passing null hides cursor/resets pinch.
       onPointer(null);
       return;
     }
 
     const lm = results.multiHandLandmarks[0];
-    const indexTip = lm[8];
-    const thumbTip = lm[4];
+    const indexTip = lm[8]; // index fingertip
+    const thumbTip = lm[4]; // thumb tip
 
-    // Mirror X and map to screen coordinates
+    // Convert to screen coordinates (Mirror horizontal)
     const x = (1 - indexTip.x) * window.innerWidth;
     const y = indexTip.y * window.innerHeight;
 
+    // Pinch detection
     const dx = indexTip.x - thumbTip.x;
     const dy = indexTip.y - thumbTip.y;
     const pinchDistance = Math.hypot(dx, dy);
-    const isPinching = pinchDistance < 0.12; // easier grab
+    
+    // 0.1 is usually a good "tight pinch" threshold, 0.12 is a bit looser
+    const isPinching = pinchDistance < 0.1; 
 
     onPointer({ x, y, isPinching });
   });
 
   const camera = new Camera(videoElement, {
     onFrame: async () => {
-      await hands.send({ image: videoElement });
+      if(videoElement) await hands.send({ image: videoElement });
     },
     width: 640,
     height: 480,
@@ -47,5 +52,8 @@ export function handTrackInit(videoElement, onPointer) {
 
   camera.start();
 
-  return () => camera.stop();
+  return () => {
+    camera.stop();
+    hands.close();
+  };
 }
